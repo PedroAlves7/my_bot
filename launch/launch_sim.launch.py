@@ -65,18 +65,26 @@ def generate_launch_description():
 
     # We use OnProcessExit to start the controllers only after the robot
     # has been successfully spawned in Gazebo. This prevents them from failing.
-    delayed_diff_drive_spawner = RegisterEventHandler(
-        event_handler=OnProcessExit(
-            target_action=spawn_entity,
-            on_exit=[diff_drive_spawner],
-        )
-    )
 
-    # The joint broadcaster spawner is also delayed until the robot is spawned.
-    delayed_joint_broad_spawner = RegisterEventHandler(
+    # delayed_diff_drive_spawner = RegisterEventHandler(
+    #     event_handler=OnProcessExit(
+    #         target_action=spawn_entity,
+    #         on_exit=[diff_drive_spawner],
+    #     )
+    # )
+    #
+    # # The joint broadcaster spawner is also delayed until the robot is spawned.
+    # delayed_joint_broad_spawner = RegisterEventHandler(
+    #     event_handler=OnProcessExit(
+    #         target_action=spawn_entity,
+    #         on_exit=[joint_broad_spawner],
+    #     )
+    # )
+
+    delayed_spawners = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=spawn_entity,
-            on_exit=[joint_broad_spawner],
+            on_exit=[diff_drive_spawner, joint_broad_spawner],
         )
     )
 
@@ -87,6 +95,5 @@ def generate_launch_description():
         twist_mux,
         gazebo,
         spawn_entity,
-        delayed_diff_drive_spawner,
-        delayed_joint_broad_spawner
+        delayed_spawners
     ])
