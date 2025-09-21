@@ -18,9 +18,8 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(ros2_control REQUIRED)
 
-# Add your C++ plugin's source files here
 # This command tells CMake to compile a shared library from your source code
-# You must have a 'src' directory in your package with a C++ file inside
+# Make sure the file src/my_bot_gazebo_plugin.cpp exists in your package
 add_library(my_bot_gazebo_plugin SHARED src/my_bot_gazebo_plugin.cpp)
 
 # Link the dependencies to your plugin library
@@ -31,8 +30,9 @@ ament_target_dependencies(my_bot_gazebo_plugin
 )
 
 # This command exports the plugin description so Gazebo can find it
+# Make sure the file my_bot_plugin.xml exists in the root of your package
 pluginlib_export_plugin_description_file(hardware_interface
-  ${CMAKE_CURRENT_SOURCE_DIR}/my_bot_plugin.xml
+  my_bot_plugin.xml
 )
 
 # Install the compiled C++ library to the 'lib' directory
