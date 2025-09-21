@@ -15,4 +15,5 @@ diff_cont:
     wheel_radius: 0.033
     use_stamped_vel: false
 joint_broad:
-  ros__parameters: {}
+  ros__parameters:
+    use_sim_time: true
