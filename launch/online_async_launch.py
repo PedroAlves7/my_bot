@@ -1,16 +1,22 @@
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, LogInfo  # <--- ADICIONE LogInfo AQUI
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    # --- Argumentos de Lançamento ---
+    # =============================================================================
+    # ADICIONE ESTA AÇÃO DE LOG AQUI. É A NOSSA PROVA.
+    # =============================================================================
+    proof_of_life_log = LogInfo(
+        msg="==============================================================\n"
+            "--- EXECUTANDO A VERSÃO CORRETA E SIMPLIFICADA DO LAUNCH FILE! ---\n"
+            "=============================================================="
+    )
 
-    # 1. Argumento para o arquivo de parâmetros
-    # Ele aponta para o seu arquivo por padrão, tornando o comando mais curto
+    # O resto do seu arquivo simplificado...
     default_params_file = os.path.join(
         get_package_share_directory("my_bot"),
         'config',
@@ -20,21 +26,17 @@ def generate_launch_description():
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
         default_value=default_params_file,
-        description='Caminho completo para o arquivo de parâmetros a ser usado.'
+        description='Caminho completo para o arquivo de parâmetros.'
     )
 
-    # 2. Argumento para o tempo de simulação
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
-        default_value='False',  # O padrão deve ser False para um robô real
-        description='Usar o relógio de simulação (Gazebo)'
+        default_value='False',
+        description='Usar o relógio de simulação'
     )
 
-    # Obter os valores dos argumentos
     params_file = LaunchConfiguration('params_file')
     use_sim_time = LaunchConfiguration('use_sim_time')
-
-    # --- Nó do SLAM Toolbox ---
 
     start_async_slam_toolbox_node = Node(
         package='slam_toolbox',
@@ -42,14 +44,15 @@ def generate_launch_description():
         name='slam_toolbox',
         output='screen',
         parameters=[
-            params_file,  # Passa o arquivo de parâmetros diretamente
+            params_file,
             {'use_sim_time': use_sim_time}
         ]
     )
 
-    # --- Descrição do Lançamento ---
-
     ld = LaunchDescription()
+
+    # Adicione a nossa prova de vida como a primeira ação
+    ld.add_action(proof_of_life_log)
 
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_use_sim_time_cmd)
