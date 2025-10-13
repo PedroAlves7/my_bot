@@ -3,104 +3,101 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, ExecuteProcess
+from launch.actions import IncludeLaunchDescription, RegisterEventHandler
+from launch.event_handlers import OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command
-from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessStart, OnProcessExit
-
+from launch.substitutions import Command, LaunchConfiguration
+from launch.actions import DeclareLaunchArgument
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # Include the robot_state_publisher launch file, provided by our own package.
-    # Force sim time to be enabled
     package_name = 'my_bot'
 
-    rsp = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory(package_name), 'launch', 'rsp.launch.py'
-        )]), launch_arguments={'use_sim_time': 'false', 'use_ros2_control': 'true'}.items()
+    # =============================================================================
+    # ETAPA 1: DEFINIR TODOS OS NÓS
+    # =============================================================================
+
+    # --- Argumentos de Lançamento ---
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    use_ros2_control = LaunchConfiguration('use_ros2_control')
+
+    # --- Robot State Publisher ---
+    # Processa o XACRO para obter a descrição do robô
+    xacro_file = os.path.join(get_package_share_directory(package_name), 'urdf', 'robot.urdf.xacro')
+    robot_description_config = Command(
+        ['xacro ', xacro_file, ' use_ros2_control:=', use_ros2_control, ' sim_mode:=', use_sim_time])
+
+    # Define o nó do robot_state_publisher com a descrição do robô
+    node_robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[{'robot_description': robot_description_config, 'use_sim_time': use_sim_time}]
     )
 
+    # --- Outros Nós ---
     joystick = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory(package_name),'launch','joystick.launch.py'
+            get_package_share_directory(package_name), 'launch', 'joystick.launch.py'
         )])
     )
-
-    twist_mux_params = os.path.join(get_package_share_directory(package_name), 'config', 'twist_mux.yaml')
     twist_mux = Node(
         package="twist_mux",
         executable="twist_mux",
-        parameters=[twist_mux_params],
+        parameters=[os.path.join(get_package_share_directory(package_name), 'config', 'twist_mux.yaml')],
         remappings=[('/cmd_vel_out', '/diff_cont/cmd_vel_unstamped')]
     )
 
-    # This node waits for the /robot_description topic to be published.
-    # We use 'ros2 topic echo --once' which exits after the first message,
-    # making it a reliable trigger for the next action.
-    wait_for_robot_description = ExecuteProcess(
-        cmd=['ros2', 'topic', 'echo', '--once', '/robot_description'],
-        name='wait_for_robot_description',
-        output='screen'
-    )
-
-    robot_description = Command(['ros2 param get --hide-type /robot_state_publisher robot_description'])
+    # --- Nós do ROS2 Control (sem o robot_description) ---
     controller_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'my_controllers.yaml')
 
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[{'robot_description': robot_description},
-                    controller_params_file]
+        parameters=[controller_params_file]
     )
 
-    # We use OnProcessExit to start the controller_manager only after
-    # the /robot_description topic has been published, ensuring the
-    # parameter is available. This is more robust than a fixed TimerAction.
-    start_controller_manager_when_ready = RegisterEventHandler(
-        event_handler=OnProcessExit(
-            target_action=wait_for_robot_description,
-            on_exit=[controller_manager],
+    diff_drive_spawner = Node(package="controller_manager", executable="spawner", arguments=["diff_cont"])
+    joint_broad_spawner = Node(package="controller_manager", executable="spawner", arguments=["joint_broad"])
+
+    # =============================================================================
+    # ETAPA 2: ORQUESTRAR A INICIALIZAÇÃO EM CASCATA
+    # =============================================================================
+
+    # Gatilho 1: Inicia o controller_manager SOMENTE APÓS o robot_state_publisher iniciar
+    delayed_controller_manager_starter = RegisterEventHandler(
+        event_handler=OnProcessStart(
+            target_action=node_robot_state_publisher,
+            on_start=[controller_manager],
         )
     )
 
-    diff_drive_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=["diff_cont"],
-    )
-
-    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
-    delayed_diff_drive_spawner = RegisterEventHandler(
+    # Gatilho 2: Inicia os spawners SOMENTE APÓS o controller_manager iniciar
+    delayed_spawners_starter = RegisterEventHandler(
         event_handler=OnProcessStart(
             target_action=controller_manager,
-            on_start=[diff_drive_spawner],
+            on_start=[
+                diff_drive_spawner,
+                joint_broad_spawner
+            ],
         )
     )
 
-    joint_broad_spawner = Node(
-        package="controller_manager",
-        executable="spawner",
-        arguments=["joint_broad"],
-    )
+    # =============================================================================
+    # ETAPA 3: RETORNAR A LISTA DE AÇÕES
+    # =============================================================================
 
-    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
-    delayed_joint_broad_spawner = RegisterEventHandler(
-        event_handler=OnProcessStart(
-            target_action=controller_manager,
-            on_start=[joint_broad_spawner],
-        )
-    )
-
-    # Launch them all!
     return LaunchDescription([
-        rsp,
+        DeclareLaunchArgument('use_sim_time', default_value='false', description='Use sim time if true'),
+        DeclareLaunchArgument('use_ros2_control', default_value='true', description='Use ros2_control if true'),
+
+        # Nós que podem iniciar imediatamente
+        node_robot_state_publisher,
         joystick,
         twist_mux,
-        wait_for_robot_description,
-        start_controller_manager_when_ready,
-        delayed_diff_drive_spawner,
-        delayed_joint_broad_spawner
+
+        # Gatilhos que gerenciam o resto da inicialização
+        delayed_controller_manager_starter,
+        delayed_spawners_starter
     ])
