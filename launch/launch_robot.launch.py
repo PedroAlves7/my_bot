@@ -6,7 +6,7 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessExit
+from launch.event_handlers import OnProcessExit, OnProcessStart
 
 from launch_ros.actions import Node
 
@@ -89,17 +89,25 @@ def generate_launch_description():
         arguments=["diff_cont", "-c", "/controller_manager"],
     )
 
+    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
+    delayed_diff_drive_spawner = RegisterEventHandler(
+        event_handler=OnProcessStart(
+            target_action=controller_manager,
+            on_start=[diff_drive_spawner],
+        )
+    )
+
     joint_broad_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=["joint_broad", "-c", "/controller_manager"],
     )
 
-    # Delay spawners until controller_manager is running and ready.
-    delayed_spawners = RegisterEventHandler(
-        event_handler=OnProcessExit(
+    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
+    delayed_joint_broad_spawner = RegisterEventHandler(
+        event_handler=OnProcessStart(
             target_action=controller_manager,
-            on_exit=[diff_drive_spawner, joint_broad_spawner],
+            on_start=[joint_broad_spawner],
         )
     )
 
@@ -112,5 +120,6 @@ def generate_launch_description():
         twist_mux,
 
         # Spawners are delayed until controller_manager is confirmed running
-        delayed_spawners,
+        delayed_diff_drive_spawner,
+        delayed_joint_broad_spawner,
     ])
