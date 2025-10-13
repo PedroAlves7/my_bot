@@ -1,32 +1,28 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import RegisterEventHandler, TimerAction
+from launch.actions import RegisterEventHandler
 from launch.event_handlers import OnProcessStart
 from launch.substitutions import Command
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
-    package_name = 'my_bot' #<--- CONFIRME SE O NOME DO PACOTE ESTÁ CORRETO
+    package_name = 'my_bot'
 
-    # --- Etapa 1: Gerar a descrição do robô UMA VEZ, a partir do arquivo XACRO ---
-    # Esta é a nossa "fonte única da verdade".
+    # --- Etapa 1: Gerar a descrição do robô UMA VEZ ---
     urdf_path = os.path.join(
         get_package_share_directory(package_name),
         'description',
-        'robot.urdf.xacro' #<--- MUDE PARA O NOME DO SEU ARQUIVO XACRO
+        'robot.urdf.xacro'
     )
-    # Usamos ParameterValue para processar o xacro e passar os argumentos necessários
     robot_description_content = ParameterValue(
         Command(['xacro ', urdf_path, ' use_ros2_control:=true']),
         value_type=str
     )
     robot_description = {'robot_description': robot_description_content}
 
-    # --- Etapa 2: Criar o Robot State Publisher ---
-    # Agora passamos a descrição diretamente para ele, em vez de usar IncludeLaunchDescription.
-    # Isso simplifica tudo.
+    # --- Etapa 2: Robot State Publisher ---
     rsp_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -34,7 +30,7 @@ def generate_launch_description():
         parameters=[robot_description]
     )
 
-    # --- Etapa 3: Configurar o Twist Mux ---
+    # --- Etapa 3: Twist Mux ---
     twist_mux_params = os.path.join(
         get_package_share_directory(package_name),
         'config',
@@ -47,8 +43,7 @@ def generate_launch_description():
         remappings=[('/cmd_vel_out', '/diff_cont/cmd_vel_unstamped')]
     )
 
-    # --- Etapa 4: Criar o Controller Manager ---
-    # Ele recebe EXATAMENTE a mesma descrição do robô que o RSP. Sem conflitos!
+    # --- Etapa 4: Controller Manager ---
     controller_params_file = os.path.join(
         get_package_share_directory(package_name),
         'config',
@@ -57,21 +52,20 @@ def generate_launch_description():
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[controller_params_file],
-        # The 'output' and 'emulate_tty' are good practice for viewing controller output
+        # AQUI ESTÁ A CORREÇÃO: Passamos AMBOS os parâmetros.
+        parameters=[robot_description, controller_params_file],
         output='screen',
         emulate_tty=True,
+        # Manter o log em DEBUG é útil por enquanto
         arguments=['--ros-args', '--log-level', 'DEBUG'],
     )
 
-    # Usar TimerAction para garantir que o RSP tenha tempo de iniciar antes do CM (boa prática)
-    delayed_controller_manager = TimerAction(period=3.0, actions=[controller_manager])
-
-    # --- Etapa 5: Criar os Spawners (Lógica de delay mantida, pois é correta) ---
+    # --- Etapa 5: Spawners ---
+    # A lógica de iniciar os spawners depois do controller_manager está correta.
     diff_drive_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["diff_cont", "--controller-manager", "/controller_manager"],
+        arguments=["diff_cont", "--controller-manager-timeout", "30"],
     )
     delayed_diff_drive_spawner = RegisterEventHandler(
         event_handler=OnProcessStart(
@@ -83,7 +77,7 @@ def generate_launch_description():
     joint_broad_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["joint_broad", "--controller-manager", "/controller_manager"],
+        arguments=["joint_broad", "--controller-manager-timeout", "30"],
     )
     delayed_joint_broad_spawner = RegisterEventHandler(
         event_handler=OnProcessStart(
@@ -96,7 +90,7 @@ def generate_launch_description():
     return LaunchDescription([
         rsp_node,
         twist_mux,
-        delayed_controller_manager,
+        controller_manager, # Lançado diretamente, sem o delay que não é mais necessário
         delayed_diff_drive_spawner,
         delayed_joint_broad_spawner
     ])
