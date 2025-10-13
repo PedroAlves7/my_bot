@@ -1,59 +1,59 @@
 import os
-
 from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessExit, OnProcessStart
-
+from launch.actions import RegisterEventHandler, TimerAction
+from launch.event_handlers import OnProcessStart
+from launch.substitutions import Command
 from launch_ros.actions import Node
-
+from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
-    # Package name
-    package_name = 'my_bot'
+    package_name = 'articubot_one' #<--- CONFIRME SE O NOME DO PACOTE ESTÁ CORRETO
 
-    # 1. --- Robot State Publisher (RSP) ---
-    # The RSP *must* be launched first and is responsible for publishing /robot_description and TF.
-    # We assume 'rsp.launch.py' correctly loads the URDF/XACRO into the 'robot_description' parameter
-    # for the robot_state_publisher node it contains.
-    rsp = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory(package_name), 'launch', 'rsp.launch.py'
-        )]), launch_arguments={'use_sim_time': 'false', 'use_ros2_control': 'true'}.items()
+    # --- Etapa 1: Gerar a descrição do robô UMA VEZ, a partir do arquivo XACRO ---
+    # Esta é a nossa "fonte única da verdade".
+    urdf_path = os.path.join(
+        get_package_share_directory(package_name),
+        'urdf',
+        'articubot_one.urdf.xacro' #<--- MUDE PARA O NOME DO SEU ARQUIVO XACRO
+    )
+    # Usamos ParameterValue para processar o xacro e passar os argumentos necessários
+    robot_description_content = ParameterValue(
+        Command(['xacro ', urdf_path, ' use_ros2_control:=true']),
+        value_type=str
+    )
+    robot_description = {'robot_description': robot_description_content}
+
+    # --- Etapa 2: Criar o Robot State Publisher ---
+    # Agora passamos a descrição diretamente para ele, em vez de usar IncludeLaunchDescription.
+    # Isso simplifica tudo.
+    rsp_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[robot_description]
     )
 
-    # We need the rsp node process to reference it for the event handler.
-    # Assuming the node in rsp.launch.py is named 'robot_state_publisher'.
-    # If rsp.launch.py only contains the robot_state_publisher node, we can use the include action itself.
-    # However, to be safe, let's assume the RSP node inside 'rsp.launch.py' has the name 'robot_state_publisher'
-    # as an explicit launch action. We'll use the 'rsp' action as the target, which often works.
-
-    # 2. --- Teleop and Mux ---
-    joystick = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            get_package_share_directory(package_name), 'launch', 'joystick.launch.py'
-        )])
+    # --- Etapa 3: Configurar o Twist Mux ---
+    twist_mux_params = os.path.join(
+        get_package_share_directory(package_name),
+        'config',
+        'twist_mux.yaml'
     )
-
-    twist_mux_params = os.path.join(get_package_share_directory(package_name), 'config', 'twist_mux.yaml')
     twist_mux = Node(
         package="twist_mux",
         executable="twist_mux",
         parameters=[twist_mux_params],
-        remappings=[('/cmd_vel_out', '/diff_cont/cmd_vel_unstamped')],
-        # Make sure twist_mux starts after RSP
-        # lifecycle_node=True, # Optional: if twist_mux is a lifecycle node
+        remappings=[('/cmd_vel_out', '/diff_cont/cmd_vel_unstamped')]
     )
 
-    # 3. --- ROS 2 Control (Controller Manager) ---
-    controller_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'my_controllers.yaml')
-
-    # NOTE: We DO NOT pass the 'robot_description' parameter here.
-    # The 'ros2_control_node' is expected to automatically look for the
-    # '/robot_description' topic published by the 'robot_state_publisher'.
+    # --- Etapa 4: Criar o Controller Manager ---
+    # Ele recebe EXATAMENTE a mesma descrição do robô que o RSP. Sem conflitos!
+    controller_params_file = os.path.join(
+        get_package_share_directory(package_name),
+        'config',
+        'my_controllers.yaml'
+    )
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
@@ -64,33 +64,15 @@ def generate_launch_description():
         arguments=['--ros-args', '--log-level', 'DEBUG'],
     )
 
-    # 4. --- Spawners ---
-    # We delay the controller manager start until the RSP is confirmed to be running.
-    # A simple and robust way is to wait for the whole 'rsp.launch.py' to finish (though usually instant)
-    # or more specifically, wait for the 'robot_state_publisher' node to exit if it fails, or for
-    # a successful node's start. Since RSP is the key, let's wait for its successful launch.
+    # Usar TimerAction para garantir que o RSP tenha tempo de iniciar antes do CM (boa prática)
+    delayed_controller_manager = TimerAction(period=3.0, actions=[controller_manager])
 
-    # Instead of the complicated 'ros2 topic echo' trigger, we wait for the RSP *process* # to start, or simply launch the controller manager immediately after the RSP launch action.
-    # Given the original code's complexity, we will use OnProcessExit for a critical node
-    # in the RSP launch (you must confirm the RSP node's name). For simplicity, let's
-    # assume the RSP node itself is called 'robot_state_publisher' and include it in a variable.
-
-    # Since we can't reliably target a node *inside* an IncludeLaunchDescription with OnProcessStart
-    # unless it's explicitly named, we will use a basic dependency approach:
-    # 1. Start RSP (which should load the URDF).
-    # 2. Start the Controller Manager.
-    # 3. Only spawn controllers once the Controller Manager is running.
-
-    # The issue in your log was that the RSP *died* instantly. We still need the Spawners to wait
-    # for the Controller Manager to be ready.
-
+    # --- Etapa 5: Criar os Spawners (Lógica de delay mantida, pois é correta) ---
     diff_drive_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["diff_cont", "-c", "/controller_manager"],
+        arguments=["diff_cont", "--controller-manager", "/controller_manager"],
     )
-
-    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
     delayed_diff_drive_spawner = RegisterEventHandler(
         event_handler=OnProcessStart(
             target_action=controller_manager,
@@ -101,10 +83,8 @@ def generate_launch_description():
     joint_broad_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["joint_broad", "-c", "/controller_manager"],
+        arguments=["joint_broad", "--controller-manager", "/controller_manager"],
     )
-
-    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
     delayed_joint_broad_spawner = RegisterEventHandler(
         event_handler=OnProcessStart(
             target_action=controller_manager,
@@ -112,15 +92,11 @@ def generate_launch_description():
         )
     )
 
-    # Launch them all!
+    # --- Etapa 6: Montar e retornar a Launch Description ---
     return LaunchDescription([
-        # Start core components immediately
-        rsp,
-        controller_manager,  # Start the controller manager
-        joystick,
+        rsp_node,
         twist_mux,
-
-        # Spawners are delayed until controller_manager is confirmed running
+        delayed_controller_manager,
         delayed_diff_drive_spawner,
-        delayed_joint_broad_spawner,
+        delayed_joint_broad_spawner
     ])
