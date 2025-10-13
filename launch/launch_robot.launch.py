@@ -61,6 +61,7 @@ def generate_launch_description():
         # The 'output' and 'emulate_tty' are good practice for viewing controller output
         output='screen',
         emulate_tty=True,
+        arguments=['--ros-args', '--log-level', 'DEBUG'],
     )
 
     # 4. --- Spawners ---
