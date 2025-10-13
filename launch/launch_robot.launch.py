@@ -14,7 +14,7 @@ def generate_launch_description():
     # Esta é a nossa "fonte única da verdade".
     urdf_path = os.path.join(
         get_package_share_directory(package_name),
-        'urdf',
+        'description',
         'robot.urdf.xacro' #<--- MUDE PARA O NOME DO SEU ARQUIVO XACRO
     )
     # Usamos ParameterValue para processar o xacro e passar os argumentos necessários
