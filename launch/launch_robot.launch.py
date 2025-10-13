@@ -15,7 +15,7 @@ def generate_launch_description():
     urdf_path = os.path.join(
         get_package_share_directory(package_name),
         'urdf',
-        'articubot_one.urdf.xacro' #<--- MUDE PARA O NOME DO SEU ARQUIVO XACRO
+        'robot.urdf.xacro' #<--- MUDE PARA O NOME DO SEU ARQUIVO XACRO
     )
     # Usamos ParameterValue para processar o xacro e passar os argumentos necessários
     robot_description_content = ParameterValue(
