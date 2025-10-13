@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 def generate_launch_description():
-    package_name = 'articubot_one' #<--- CONFIRME SE O NOME DO PACOTE ESTÁ CORRETO
+    package_name = 'my_bot' #<--- CONFIRME SE O NOME DO PACOTE ESTÁ CORRETO
 
     # --- Etapa 1: Gerar a descrição do robô UMA VEZ, a partir do arquivo XACRO ---
     # Esta é a nossa "fonte única da verdade".
