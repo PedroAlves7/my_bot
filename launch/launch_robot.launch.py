@@ -52,8 +52,7 @@ def generate_launch_description():
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[{'robot_description': robot_description},
-                    controller_params_file]
+        parameters=[controller_params_file]
     )
 
     # We use OnProcessExit to start the controller_manager only after
