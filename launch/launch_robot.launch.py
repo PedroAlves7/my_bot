@@ -52,12 +52,10 @@ def generate_launch_description():
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        # AQUI ESTÁ A CORREÇÃO: Passamos AMBOS os parâmetros.
         parameters=[robot_description, controller_params_file],
         output='screen',
         emulate_tty=True,
-        # Manter o log em DEBUG é útil por enquanto
-        arguments=['--ros-args', '--log-level', 'DEBUG'],
+        arguments=['--ros-args', '--log-level'],
     )
 
     # --- Etapa 5: Spawners ---
