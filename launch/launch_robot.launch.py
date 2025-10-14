@@ -55,7 +55,7 @@ def generate_launch_description():
         parameters=[robot_description, controller_params_file],
         output='screen',
         emulate_tty=True,
-        arguments=['--ros-args', '--log-level'],
+        arguments=['--log-level', 'info'],
     )
 
     # --- Etapa 5: Spawners ---
