@@ -1,41 +1,35 @@
 import os
+
 from ament_index_python.packages import get_package_share_directory
+
 from launch import LaunchDescription
-from launch.actions import RegisterEventHandler
-from launch.event_handlers import OnProcessStart
+from launch.actions import IncludeLaunchDescription, ExecuteProcess
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command
+from launch.actions import RegisterEventHandler
+from launch.event_handlers import OnProcessStart, OnProcessExit
+
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
+
 
 def generate_launch_description():
+    # Include the robot_state_publisher launch file, provided by our own package.
+    # Force sim time to be enabled
     package_name = 'my_bot'
 
-    # --- Etapa 1: Gerar a descrição do robô UMA VEZ ---
-    urdf_path = os.path.join(
-        get_package_share_directory(package_name),
-        'description',
-        'robot.urdf.xacro'
-    )
-    robot_description_content = ParameterValue(
-        Command(['xacro ', urdf_path, ' use_ros2_control:=true']),
-        value_type=str
-    )
-    robot_description = {'robot_description': robot_description_content}
-
-    # --- Etapa 2: Robot State Publisher ---
-    rsp_node = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        output='screen',
-        parameters=[robot_description]
+    rsp = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory(package_name), 'launch', 'rsp.launch.py'
+        )]), launch_arguments={'use_sim_time': 'false', 'use_ros2_control': 'true'}.items()
     )
 
-    # --- Etapa 3: Twist Mux ---
-    twist_mux_params = os.path.join(
-        get_package_share_directory(package_name),
-        'config',
-        'twist_mux.yaml'
+    joystick = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory(package_name),'launch','joystick.launch.py'
+        )])
     )
+
+    twist_mux_params = os.path.join(get_package_share_directory(package_name), 'config', 'twist_mux.yaml')
     twist_mux = Node(
         package="twist_mux",
         executable="twist_mux",
@@ -43,28 +37,41 @@ def generate_launch_description():
         remappings=[('/cmd_vel_out', '/diff_cont/cmd_vel_unstamped')]
     )
 
-    # --- Etapa 4: Controller Manager ---
-    controller_params_file = os.path.join(
-        get_package_share_directory(package_name),
-        'config',
-        'my_controllers.yaml'
+    # This node waits for the /robot_description topic to be published.
+    # We use 'ros2 topic echo --once' which exits after the first message,
+    # making it a reliable trigger for the next action.
+    wait_for_robot_description = ExecuteProcess(
+        cmd=['ros2', 'topic', 'echo', '--once', '/robot_description'],
+        name='wait_for_robot_description',
+        output='screen'
     )
+
+    robot_description = Command(['ros2 param get --hide-type /robot_state_publisher robot_description'])
+    controller_params_file = os.path.join(get_package_share_directory(package_name), 'config', 'my_controllers.yaml')
+
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
-        parameters=[robot_description, controller_params_file],
-        output='screen',
-        emulate_tty=True,
-        arguments=['--log-level', 'info'],
+        parameters=[controller_params_file]
     )
 
-    # --- Etapa 5: Spawners ---
-    # A lógica de iniciar os spawners depois do controller_manager está correta.
+    # We use OnProcessExit to start the controller_manager only after
+    # the /robot_description topic has been published, ensuring the
+    # parameter is available. This is more robust than a fixed TimerAction.
+    start_controller_manager_when_ready = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=wait_for_robot_description,
+            on_exit=[controller_manager],
+        )
+    )
+
     diff_drive_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["diff_cont", "--controller-manager-timeout", "30"],
+        arguments=["diff_cont"],
     )
+
+    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
     delayed_diff_drive_spawner = RegisterEventHandler(
         event_handler=OnProcessStart(
             target_action=controller_manager,
@@ -75,8 +82,10 @@ def generate_launch_description():
     joint_broad_spawner = Node(
         package="controller_manager",
         executable="spawner",
-        arguments=["joint_broad", "--controller-manager-timeout", "30"],
+        arguments=["joint_broad"],
     )
+
+    # Use OnProcessStart to ensure the spawner only runs when the controller_manager is active.
     delayed_joint_broad_spawner = RegisterEventHandler(
         event_handler=OnProcessStart(
             target_action=controller_manager,
@@ -84,11 +93,13 @@ def generate_launch_description():
         )
     )
 
-    # --- Etapa 6: Montar e retornar a Launch Description ---
+    # Launch them all!
     return LaunchDescription([
-        rsp_node,
+        rsp,
+        joystick,
         twist_mux,
-        controller_manager, # Lançado diretamente, sem o delay que não é mais necessário
+        wait_for_robot_description,
+        start_controller_manager_when_ready,
         delayed_diff_drive_spawner,
         delayed_joint_broad_spawner
     ])
