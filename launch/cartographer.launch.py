@@ -12,7 +12,7 @@ def generate_launch_description():
     lua_config_path = os.path.join(
         pkg_share_dir,
         'config',
-        'my_robot_cartographer.lua'
+        'cartographer_config.lua'
     )
 
     # Cartographer SLAM node
@@ -21,8 +21,8 @@ def generate_launch_description():
         executable='cartographer_node',
         name='cartographer_node',
         output='screen',
-        arguments=['-configuration_directory', os.path.join(pkg_share_dir, 'config'),
-                     '-configuration_basename', 'my_robot_cartographer.lua'],
+        arguments=['-configuration_filename', lua_config_path],
+        parameters=[{'use_sim_time': False}],
         remappings=[
             ('scan', '/scan') # Remap the 'scan' topic if your LiDAR publishes on a different name
         ]
@@ -35,7 +35,8 @@ def generate_launch_description():
         executable='occupancy_grid_node',
         name='occupancy_grid_node',
         output='screen',
-        arguments=['-resolution', '0.05', '-publish_period_sec', '1.0']
+        arguments=['-resolution', '0.05', '-publish_period_sec', '1.0'],
+        parameters=[{'use_sim_time': False}]
     )
 
     return LaunchDescription([
