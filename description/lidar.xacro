@@ -4,13 +4,13 @@
     <joint name="laser_joint" type="fixed">
         <parent link="chassis"/>
         <child link="laser_frame"/>
-        <origin xyz="0.1 0 0.175" rpy="0 0 -1.5708"/>
+        <origin xyz="0.145 0 0.865" rpy="0 0 -1.5708"/>
     </joint>
 
     <link name="laser_frame">
         <visual>
             <geometry>
-                <cylinder radius="0.05" length="0.04"/>
+                <cylinder radius="0.0165" length="0.033"/>
             </geometry>
             <material name="red"/>
         </visual>
@@ -29,7 +29,7 @@
     <gazebo reference="laser_frame">
         <material>Gazebo/Red</material>
         <sensor name="laser" type="ray">
-            <pose> 0 0 0 0 0 0 </pose>
+            <pose> 0 0 0.0165 0 0 0 </pose>
             <visualize>false</visualize>
             <update_rate>10</update_rate>
             <ray>
