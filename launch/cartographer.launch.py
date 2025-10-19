@@ -15,7 +15,7 @@ def generate_launch_description():
         name='cartographer_node',
         output='screen',
         arguments=['-configuration_directory', os.path.join(pkg_share_dir, 'config'),
-                     '-configuration_basename', 'my_robot_cartographer.lua'],
+                     '-configuration_basename', 'cartographer_config.lua'],
         parameters=[{'use_sim_time': False}],
         remappings=[
             ('scan', '/scan') # Remap the 'scan' topic if your LiDAR publishes on a different name
