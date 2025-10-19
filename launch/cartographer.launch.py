@@ -30,10 +30,10 @@ def generate_launch_description():
 
     # Cartographer Occupancy Grid node
     # This node takes the map data from Cartographer and creates the occupancy grid for Nav2
-    occupancy_grid_node = Node(
+    cartographer_occupancy_grid_node = Node(
         package='cartographer_ros',
-        executable='occupancy_grid_node',
-        name='occupancy_grid_node',
+        executable='cartographer_occupancy_grid_node.',
+        name='cartographer_occupancy_grid_node.',
         output='screen',
         arguments=['-resolution', '0.05', '-publish_period_sec', '1.0'],
         parameters=[{'use_sim_time': False}]
@@ -41,5 +41,5 @@ def generate_launch_description():
 
     return LaunchDescription([
         cartographer_node,
-        occupancy_grid_node
+        cartographer_occupancy_grid_node
     ])
