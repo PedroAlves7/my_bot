@@ -8,20 +8,14 @@ def generate_launch_description():
     # Get the package share directory
     pkg_share_dir = get_package_share_directory('my_bot') # <-- CHANGE THIS
 
-    # Define the path to the LUA configuration file
-    lua_config_path = os.path.join(
-        pkg_share_dir,
-        'config',
-        'cartographer_config.lua'
-    )
-
     # Cartographer SLAM node
     cartographer_node = Node(
         package='cartographer_ros',
         executable='cartographer_node',
         name='cartographer_node',
         output='screen',
-        arguments=['-configuration_filename', lua_config_path],
+        arguments=['-configuration_directory', os.path.join(pkg_share_dir, 'config'),
+                     '-configuration_basename', 'my_robot_cartographer.lua'],
         parameters=[{'use_sim_time': False}],
         remappings=[
             ('scan', '/scan') # Remap the 'scan' topic if your LiDAR publishes on a different name
