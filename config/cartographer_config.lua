@@ -37,11 +37,21 @@ TRAJECTORY_BUILDER_2D.use_imu_data = false
 TRAJECTORY_BUILDER_2D.min_range = 0.1
 TRAJECTORY_BUILDER_2D.max_range = 10.0
 
+TRAJECTORY_BUILDER_2D.ceres_scan_matcher.translation_weight = 10.
+-- Increase this value. The default is often around 1e2.
+-- This tells the optimizer to prioritize rotation matching.
+TRAJECTORY_BUILDER_2D.ceres_scan_matcher.rotation_weight = 4e2
+
 MAP_BUILDER.use_trajectory_builder_2d = true
 MAP_BUILDER.num_background_threads = 4
 POSE_GRAPH.optimization_problem.huber_scale = 1e1
 POSE_GRAPH.optimize_every_n_nodes = 40
 POSE_GRAPH.constraint_builder.min_score = 0.65
 POSE_GRAPH.constraint_builder.global_localization_min_score = 0.7
+
+-- Add these lines if they don't exist under POSE_GRAPH
+POSE_GRAPH.matcher_translation_weight = 5e2
+-- Increase this value significantly.
+POSE_GRAPH.matcher_rotation_weight = 1.6e3
 
 return options
