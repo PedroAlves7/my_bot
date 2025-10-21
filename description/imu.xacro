@@ -5,7 +5,7 @@
 
     <xacro:property name="imu_link_name" value="bno055" />
 
-    <xacro:property name="imu_pos_x" value="0.0" />  <xacro:property name="imu_pos_y" value="0.0" />  <xacro:property name="imu_pos_z" value="0.01" /> <joint name="imu_joint" type="fixed">
+    <xacro:property name="imu_pos_x" value="0.0" />  <xacro:property name="imu_pos_y" value="0.0" />  <xacro:property name="imu_pos_z" value="0.0" /> <joint name="imu_joint" type="fixed">
         <parent link="${imu_parent_link}"/>
         <child link="${imu_link_name}"/>
 
