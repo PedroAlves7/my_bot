@@ -15,9 +15,8 @@ def generate_launch_description():
         name='cartographer_node',
         output='screen',
         arguments=['-configuration_directory', os.path.join(pkg_share_dir, 'config'),
-                   '-configuration_basename', 'cartographer_config.lua'],
-        parameters=[{'use_sim_time': False},
-                    {'tracking_frame': 'chassis'}],
+                     '-configuration_basename', 'cartographer_config.lua'],
+        parameters=[{'use_sim_time': False}],
         remappings=[
             ('scan', '/scan'),
             ('imu', '/bno055/imu')
