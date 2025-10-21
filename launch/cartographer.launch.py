@@ -18,7 +18,8 @@ def generate_launch_description():
                      '-configuration_basename', 'cartographer_config.lua'],
         parameters=[{'use_sim_time': False}],
         remappings=[
-            ('scan', '/scan') # Remap the 'scan' topic if your LiDAR publishes on a different name
+            ('scan', '/scan'),
+            ('imu', '/bno055/imu')
         ]
     )
 
