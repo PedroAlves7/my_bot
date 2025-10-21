@@ -31,7 +31,7 @@ options = {
 }
 
 -- Since you don't have an IMU, this is set to false
-TRAJECTORY_BUILDER_2D.use_imu_data = false
+TRAJECTORY_BUILDER_2D.use_imu_data = true
 
 -- You can adjust this value based on your LiDAR's range
 TRAJECTORY_BUILDER_2D.min_range = 0.1
