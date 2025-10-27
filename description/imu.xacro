@@ -11,7 +11,7 @@
 
         <origin xyz="${imu_pos_x} ${imu_pos_y} ${imu_pos_z}"
 
-                rpy="0 0 1.5708"/>
+                rpy="0 0 0"/>
     </joint>
 
     <link name="${imu_link_name}">
