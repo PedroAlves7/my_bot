@@ -36,6 +36,7 @@ TRAJECTORY_BUILDER_2D.use_imu_data = true
 TRAJECTORY_BUILDER_2D.min_range = 0.1
 TRAJECTORY_BUILDER_2D.max_range = 10.0
 
+TRAJECTORY_BUILDER_2D.use_online_correlative_scan_matching = false
 TRAJECTORY_BUILDER_2D.ceres_scan_matcher.translation_weight = 10.
 -- Increase this value. The default is often around 1e2.
 -- This tells the optimizer to prioritize rotation matching.
