@@ -12,7 +12,7 @@ options = {
   odom_frame = "odom",
   provide_odom_frame = true,
   publish_frame_projected_to_2d = true,
-  use_odometry = false,       -- Set to false because you don't have wheel odometry
+  use_odometry = true,
   use_nav_sat = false,
   use_landmarks = false,
   num_laser_scans = 1,        -- Set to 1 for a single 2D LiDAR
@@ -30,7 +30,6 @@ options = {
   landmarks_sampling_ratio = 1.,
 }
 
--- Since you don't have an IMU, this is set to false
 TRAJECTORY_BUILDER_2D.use_imu_data = true
 
 -- You can adjust this value based on your LiDAR's range
