@@ -19,7 +19,7 @@ def generate_launch_description():
         parameters=[{'use_sim_time': False}],
         remappings=[
             ('scan', '/scan'),
-            ('imu', '/bno055/imu')
+            ('imu', '/imu')
         ]
     )
 
