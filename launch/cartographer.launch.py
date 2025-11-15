@@ -30,7 +30,7 @@ def generate_launch_description():
         executable='cartographer_occupancy_grid_node',
         name='cartographer_occupancy_grid_node',
         output='screen',
-        arguments=['-resolution', '0.05', '-publish_period_sec', '1.0'],
+        arguments=['-resolution', '0.01', '-publish_period_sec', '1.0'],
         parameters=[{'use_sim_time': False}]
     )
 

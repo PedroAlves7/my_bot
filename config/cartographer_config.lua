@@ -42,17 +42,9 @@ TRAJECTORY_BUILDER_2D.ceres_scan_matcher.translation_weight = 10.
 -- This tells the optimizer to prioritize rotation matching.
 TRAJECTORY_BUILDER_2D.ceres_scan_matcher.rotation_weight = 4e2
 
-TRAJECTORY_BUILDER_2D.submaps.grid_options_2d = {
-  grid_type = "PROBABILITY_GRID",
-  resolution = 1e-2,
-}
-
 MAP_BUILDER.use_trajectory_builder_2d = true
 MAP_BUILDER.num_background_threads = 4
-MAP_BUILDER.grid_options_2d = {
-  grid_type = "PROBABILITY_GRID",
-  resolution = 1e-2,
-}
+
 POSE_GRAPH.optimization_problem.huber_scale = 1e1
 POSE_GRAPH.optimize_every_n_nodes = 10
 POSE_GRAPH.constraint_builder.min_score = 0.65
