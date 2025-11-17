@@ -21,7 +21,9 @@ def generate_launch_description():
         executable='apply_calib_node',
         name='imu_calib',
         output='screen',
-        parameters=[{"calib_file": calib_file_path}],
+        parameters=[{"calib_file": calib_file_path,
+                     "calibrate_gyros": False}],
+
         remappings=[
             ('raw', '/bno055/imu_raw'),
             ('corrected', 'imu_corrected')
@@ -36,7 +38,7 @@ def generate_launch_description():
         parameters=[
             {
                 'use_mag': False,
-                'do_bias_estimation': True,
+                'do_bias_estimation': False,
                 'do_adaptive_gain': True,
                 'publish_debug_topics': True
             }
