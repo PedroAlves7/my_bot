@@ -71,7 +71,7 @@
             <geometry>
                 <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
             </geometry>
-            <material name="orange"/>
+            <material name="black"/>
         </visual>
         <collision>
             <origin xyz="${chassis_length/2} 0 ${chassis_height/2}"/>
@@ -85,7 +85,7 @@
     </link>
 
     <gazebo reference="chassis">
-        <material>Gazebo/Orange</material>
+        <material>Gazebo/Black</material>
     </gazebo>
 
     <!-- LEFT WHEEL LINK -->
